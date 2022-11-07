@@ -6,8 +6,12 @@ edition = "2021"
 homepage = "https://github.com/dacut/scratchstack-wrapper-aws-c-common"
 license = "Apache-2.0"
 repository = "https://github.com/dacut/scratchstack-wrapper-aws-c-common"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 build = "build.rs"
+include = [
+    "/include/aws/common/*.h",
+    "/include/aws/common/*.inl",
+]
 
 [build-dependencies]
 bindgen = "^0.61"

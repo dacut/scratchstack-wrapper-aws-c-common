@@ -7,6 +7,9 @@ fn main() {
     let root = var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
     let out_dir = var("OUT_DIR").expect("OUT_DIR not set");
 
+    println!("cargo:rerun-if-changed=include");
+    println!("cargo:rerun-if-env-changed=AWS_CRT_PREFIX");
+
     if let Ok(aws_crt_prefix) = var("AWS_CRT_PREFIX") {
         println!("cargo:rustc-link-search={aws_crt_prefix}/lib");
     }

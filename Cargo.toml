@@ -15,7 +15,7 @@ include = [
 
 [lib]
 name = "scratchstack_wrapper_aws_c_common"
-crate-type = "lib"
+crate-type = ["lib"]
 doctest = false
 
 [build-dependencies]

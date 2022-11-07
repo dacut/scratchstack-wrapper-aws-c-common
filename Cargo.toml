@@ -11,6 +11,9 @@ build = "build.rs"
 include = [
     "/include/aws/common/*.h",
     "/include/aws/common/*.inl",
+    "/src",
+    "Cargo.toml",
+    "build.rs",
 ]
 
 [lib]

@@ -13,6 +13,11 @@ include = [
     "/include/aws/common/*.inl",
 ]
 
+[lib]
+name = "scratchstack_wrapper_aws_c_common"
+crate-type = "lib"
+doctest = false
+
 [build-dependencies]
 bindgen = "^0.61"
 

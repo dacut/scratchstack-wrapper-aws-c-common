@@ -1,75 +1,56 @@
 use {
-    log::{error, info},
-    std::{env::var, fs::create_dir_all, process::Command},
+    bindgen::builder,
+    std::{env::var, fs::read_dir},
 };
 
-const CMAKE_BUILD_TYPE: &str = "Debug";
-const LIBRARY: &str = "aws-c-common";
-
 fn main() {
-    let out_dir = var("OUT_DIR").unwrap();
-    env_logger::init();
+    let out_dir = var("OUT_DIR").expect("OUT_DIR not set");
 
-    println!("cargo:rustc-link-search=native={out_dir}/lib");
-    println!("cargo:rerun-if-changed=build.rs");
-
-    let library = LIBRARY;
-    // Create the CMake build directory.
-    let lib_cmake_dir = format!("{out_dir}/cmake/{library}/build");
-    create_dir_all(&lib_cmake_dir).unwrap();
-
-    // Prepare the build.
-    let args = vec![
-        "-S".to_string(),
-        library.to_string(),
-        "-B".to_string(),
-        lib_cmake_dir.clone(),
-        format!("-DCMAKE_BUILD_TYPE={CMAKE_BUILD_TYPE}"),
-        format!("-DCMAKE_INSTALL_PREFIX={out_dir}"),
-        format!("-DCMAKE_PREFIX_PATH={out_dir}"),
-    ];
-    info!("Preparing build for {library}: cmake {}", args.join(" "));
-
-    match Command::new("cmake").args(args).status() {
-        Ok(es) => {
-            if !es.success() {
-                error!("cmake preparation for {} failed: {}", library, es);
-                panic!("cmake preparation for {} failed: {}", library, es);
-            }
+    let aws_crt_prefix = match var("AWS_CRT_PREFIX") {
+        Ok(aws_crt_prefix) => {
+            println!("cargo:rustc-link-search={}/lib", aws_crt_prefix);
+            aws_crt_prefix
         }
-        Err(e) => {
-            error!("cmake preparation for {} failed: {}", library, e);
-            panic!("cmake preparation for {} failed: {}", library, e);
+        Err(_) => "/usr/local".to_string(),
+    };
+
+    println!("cargo:rustc-link-lib=aws-c-common");
+
+    let mut builder = builder()
+        .clang_arg(format!("-I{aws_crt_prefix}/include", aws_crt_prefix = aws_crt_prefix))
+        .derive_debug(true)
+        .derive_default(true)
+        .derive_partialeq(true)
+        .derive_eq(true);
+
+    let dir = format!("{aws_crt_prefix}/include/aws/common");
+    let mut n_includes = 0;
+
+    for entry in read_dir(&dir).expect("Unable to list header files in include/aws/common") {
+        let entry = entry.expect("Unable to read directory entry in include/aws/common");
+
+        if entry.file_type().expect("Unable to read file type").is_file() {
+            let file_name_string = entry.file_name();
+            if let Some(file_name_utf8) = file_name_string.to_str() {
+                if file_name_utf8.ends_with(".h") {
+                    builder = builder.header(format!("{dir}/{file_name_utf8}"));
+                    n_includes += 1;
+                }
+            }
         }
     }
 
-    // Build the library.
-    let args = vec!["--build".to_string(), lib_cmake_dir, "--target".to_string(), "install".to_string()];
-    info!("Building {library}: cmake {}", args.join(" "));
-
-    match Command::new("cmake").args(args).status() {
-        Ok(es) => {
-            if !es.success() {
-                error!("cmake build for {} failed: {}", library, es);
-                panic!("cmake build for {} failed: {}", library, es);
-            }
-        }
-        Err(e) => {
-            error!("cmake build for {} failed: {}", library, e);
-            panic!("cmake build for {} failed: {}", library, e);
-        }
+    if n_includes == 0 {
+        panic!("No header files found in include/aws/common");
     }
 
-    match library {
-        "aws-lc" => {
-            println!("cargo:rustc-link-lib=static=crypto");
-            println!("cargo:rustc-link-lib=static=ssl");
-        }
-        "s2n-tls" => {
-            println!("cargo:rustc-link-lib=static=s2n");
-        }
-        _ => {
-            println!("cargo:rustc-link-lib=static={}", library);
-        }
+    builder = builder.allowlist_function("aws_.*").allowlist_type("aws_.*").allowlist_var("aws_.*");
+
+    let bindings = builder.generate().expect("Unable to generate bindings");
+    bindings.write_to_file(format!("{out_dir}/bindings.rs")).expect("Failed to write bindings.");
+
+    if cfg!(any(target_os = "ios", target_os = "macos")) {
+        println!("cargo:rustc-link-arg=-framework");
+        println!("cargo:rustc-link-arg=CoreFoundation");
     }
 }

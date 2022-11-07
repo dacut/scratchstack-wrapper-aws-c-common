@@ -1,30 +1,10 @@
-mod allocator;
-mod array_list;
-mod atomics;
-mod byte_buf;
-mod date_time;
-mod error;
-mod hash_table;
-mod linked_list;
-mod logging;
-mod mutex;
-mod package;
-mod priority_queue;
-mod ref_count;
-mod statistics;
-mod string;
-mod task_scheduler;
-mod thread;
+#![allow(non_upper_case_globals, non_camel_case_types, non_snake_case, dead_code)]
+#![warn(clippy::all)]
 
-pub use {
-    allocator::*, array_list::*, atomics::*, byte_buf::*, date_time::*, error::*, hash_table::*, linked_list::*,
-    logging::*, mutex::*, package::*, priority_queue::*, ref_count::*, statistics::*, string::*, task_scheduler::*,
-    thread::*,
-};
+//! Rust wrapper for the `aws-c-common` library. For testing purposes only.
+//! For interacting with AWS services, use the `aws-sdk-rust` crate instead.
 
-#[link(name = "aws-c-common")]
-extern "C" {
-    pub fn aws_common_library_init(allocator: *const AwsCAllocator);
-    pub fn aws_common_library_clean_up();
-    pub fn aws_common_fatal_assert_library_initialized();
-}
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
+mod sync_ptr;
+pub use sync_ptr::SyncPtr;
